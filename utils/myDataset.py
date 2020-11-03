@@ -1,0 +1,105 @@
+from typing import Optional
+
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.data import Dataset
+from torch.utils.data.sampler import SubsetRandomSampler
+from transformers import AutoTokenizer, XLNetModel
+import torch
+import numpy as np
+from utils.dataStruct import MyDataLoader
+
+
+class MyDataset(Dataset):
+    def __init__(self, path: str = "./train/", count: int = 2515):
+        self.data = MyDataLoader(path, count).loadData()
+        self.tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-xlnet-mid")
+        self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=768)
+        self.len = len(self.data)
+        self.max_len = max(list(map(lambda x: len(x.text[0]), self.data)))
+
+    def __getitem__(self, index):
+
+        text = self.data[index].text[0]
+        value = torch.tensor(self.data[index].values)
+
+        edgeLeft = torch.tensor(self.data[index].edgeLeft)
+        edgeRight = torch.tensor(self.data[index].edgeRight)
+
+        if len(value.shape) == 1:
+            value.unsqueeze(0)
+        if len(edgeLeft.shape) == 1:
+            edgeRight.unsqueeze(0)
+        if len(edgeLeft.shape) == 1:
+            edgeRight.unsqueeze(0)
+
+        edge = torch.stack([edgeLeft, edgeRight], dim=0)
+        # label = torch.sparse.FloatTensor(edge, value, torch.Size([len(text)+2, len(text)+2]))
+        text = [token for token in text]
+
+        encoding = self.tokenizer.encode_plus(text, return_tensors='pt')
+        input_ids = encoding['input_ids']
+        attention_mask = encoding['attention_mask']
+        # print(len(text)+2, input_ids.shape[-1], attention_mask.shape[
+        #     -1])
+        assert (len(text) + 2) == input_ids.shape[-1] and (len(text) + 2) == attention_mask.shape[
+            -1], "text tokenizer length matches error."
+        # print("input_ids", input_ids.shape)
+        # outputs = self.model(input_ids, attention_mask=attention_mask)
+        return input_ids, attention_mask, edge, value
+
+    def __len__(self):
+        return self.len
+
+
+class BucketDataLoader:
+    def __init__(self, dataset: Dataset, batch_size: int, shuffle: bool):
+        self.data = dataset
+        self.starts = np.arange(0, len(dataset), batch_size)
+        if shuffle:
+            np.random.shuffle(self.starts)
+        self.num = 0
+        self.batch_size = batch_size
+        self.max_len = len(dataset)
+
+    def __next__(self):
+        if self.num < len(self.starts):
+            datalist = range(self.starts[self.num], min(self.max_len, self.batch_size + self.starts[self.num]))
+            self.num = self.num + 1
+            inputs = []
+            edges = []
+            values = []
+            label = []
+            attens = []
+            for i in datalist:
+                ins, atten, edge, value = self.data[i]
+                inputs.append(ins)
+                attens.append(atten)
+                edges.append(edge)
+                values.append(value)
+            max_len = max(list(map(lambda x: x.shape[-1], inputs)))
+            pad_token = self.data.tokenizer.pad_token_id
+
+            for i in range(len(inputs)):
+                inputs[i] = torch.cat((inputs[i],
+                                       torch.tensor([pad_token] * (max_len - inputs[i].shape[-1])).unsqueeze(0)), -1)
+                attens[i] = torch.cat((attens[i],
+                                       torch.tensor([0] * (max_len - attens[i].shape[-1])).unsqueeze(0)), -1)
+                label.append(torch.sparse.FloatTensor(edges[i], values[i], torch.Size([max_len, max_len])))
+                oneHot = torch.zeros((label[i].shape[0], label[i].shape[1], 15))
+                oneHot.scatter_(2, label[i].to_dense().long().unsqueeze(-1), 1)
+                label[i] = oneHot
+                # print(inputs[i].shape)
+
+            inputs = torch.stack(inputs, dim=0).squeeze()
+            attens = torch.stack(attens, dim=0).squeeze()
+            label = torch.stack(label, dim=0)
+
+            return inputs, attens, label
+
+        return None
+
+
+# dataset = MyDataset(count=2515)
+# loader = BucketDataLoader(dataset, 8, True)
+# a, b, c = loader.__next__()
+
