@@ -1,4 +1,6 @@
 from itertools import chain
+from typing import Tuple, Dict, Any
+
 import numpy as np
 import pandas as pd
 from tqdm import trange
@@ -6,9 +8,7 @@ from tqdm import trange
 
 class dataPreLoader:
     def __init__(self, path: str = "./train/", count: int = 2515):
-        self.data = self.dataFilter(path, count)
-        self.index2cate = None
-        self.cate2index = None
+        self.data, self.index2cate, self.cate2index = self.dataFilter(path, count)
 
     def loadLabel(self, path: str = "./train/", count: int = 2515) -> list:
         labelList = []
@@ -57,7 +57,7 @@ class dataPreLoader:
         data = list(map(lambda atom: self.funcMatch(atom), data))
         return data
 
-    def dataFilter(self, path: str = "./train/", count: int = 2515) -> list:
+    def dataFilter(self, path: str = "./train/", count: int = 2515) -> Tuple[list, Dict[int, Any], Dict[Any, int]]:
         def process(line):
             if len(line) >= 1:
                 return line['Category'].to_list()
@@ -72,13 +72,13 @@ class dataPreLoader:
         data = self.load(path, count)
 
         category = list(map(lambda line: process(line), data))
-        category = set(list(chain(*category)))
+        category = list(sorted(set(list(chain(*category)))))
 
         data = list(map(lambda line: filterCategory(line), data))
 
         index = [i for i in range(len(category))]
-        self.cate2index = dict(zip(category, index))
-        self.index2cate = dict(zip(index, category))
+        cate2index = dict(zip(category, index))
+        index2cate = dict(zip(index, category))
         oneHot = np.eye(len(index)).tolist()
         print(category)
 
@@ -97,7 +97,7 @@ class dataPreLoader:
         def cate2oneHotProcessing(line):
             # print(line)
             if line['Category'] in category:
-                line['Category'] = self.cate2index[line["Category"]]+1
+                line['Category'] = cate2index[line["Category"]] + 1
             # return self.oneHot(cate2index[line["Category"]])
             return line
 
@@ -107,4 +107,4 @@ class dataPreLoader:
 
         data = list(map(lambda line: cate2oneHot(line), data))
         print("total_data_length:", len(data))
-        return data
+        return data, index2cate, cate2index

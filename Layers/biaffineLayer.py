@@ -12,7 +12,7 @@ class biaffineLayer(nn.Module, ABC):
 
     def forward(self, x1, x2):
         # [b, n, v1] -> [b*n, v1]
-        print("BIAFFINEPARA:", self.bilinearMap)
+        # print("BIAFFINEPARA:", self.bilinearMap)
         batch_size = x1.shape[0]
         bucket_size = x1.shape[1]
 

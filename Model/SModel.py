@@ -20,7 +20,7 @@ class SModel(nn.Module, ABC):
 
     def forward(self, x):
         x = self.embedding(x)
-        print(x)
+        # print(x)
         x = torch.relu(self.linear(x))
         x, _ = self.bilstm(x)
         # print("BILSTM:", x.shape)

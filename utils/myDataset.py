@@ -1,3 +1,4 @@
+from collections import Iterator
 from typing import Optional
 
 from torch.utils.data.dataloader import DataLoader
@@ -6,12 +7,14 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from transformers import AutoTokenizer, XLNetModel
 import torch
 import numpy as np
-from utils.dataStruct import MyDataLoader
+from utils.dataStruct import MyDataProcessor
 
 
 class MyDataset(Dataset):
     def __init__(self, path: str = "./train/", count: int = 2515):
-        self.data = MyDataLoader(path, count).loadData()
+        self.processor = MyDataProcessor(path, count)
+        self.data = self.processor.loadData()
+        self.cateDict = self.processor.loadDict()
         self.tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-xlnet-mid")
         self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=768)
         self.len = len(self.data)
@@ -32,7 +35,7 @@ class MyDataset(Dataset):
         if len(edgeLeft.shape) == 1:
             edgeRight.unsqueeze(0)
 
-        edge = torch.stack([edgeLeft, edgeRight], dim=0)
+        edge = torch.stack([edgeLeft, edgeRight], dim=0).long()
         # label = torch.sparse.FloatTensor(edge, value, torch.Size([len(text)+2, len(text)+2]))
         text = [token for token in text]
 
@@ -51,18 +54,25 @@ class MyDataset(Dataset):
         return self.len
 
 
-class BucketDataLoader:
-    def __init__(self, dataset: Dataset, batch_size: int, shuffle: bool):
+class BucketDataLoader(Iterator):
+    def __init__(self, dataset: Dataset, batch_size: int = 16, shuffle: bool = True, category: int = 15,
+                 train: bool = True):
         self.data = dataset
         self.starts = np.arange(0, len(dataset), batch_size)
         if shuffle:
             np.random.shuffle(self.starts)
+        if train:
+            self.starts = self.starts[:int(3 * len(self.starts) / 4)]
+        else:
+            self.starts = self.starts[int(3 * len(self.starts) / 4):]
+
         self.num = 0
         self.batch_size = batch_size
         self.max_len = len(dataset)
+        self.category = category
 
     def __next__(self):
-        if self.num < len(self.starts):
+        try:
             datalist = range(self.starts[self.num], min(self.max_len, self.batch_size + self.starts[self.num]))
             self.num = self.num + 1
             inputs = []
@@ -84,10 +94,10 @@ class BucketDataLoader:
                                        torch.tensor([pad_token] * (max_len - inputs[i].shape[-1])).unsqueeze(0)), -1)
                 attens[i] = torch.cat((attens[i],
                                        torch.tensor([0] * (max_len - attens[i].shape[-1])).unsqueeze(0)), -1)
-                label.append(torch.sparse.FloatTensor(edges[i], values[i], torch.Size([max_len, max_len])))
-                oneHot = torch.zeros((label[i].shape[0], label[i].shape[1], 15))
-                oneHot.scatter_(2, label[i].to_dense().long().unsqueeze(-1), 1)
-                label[i] = oneHot
+                label.append(torch.sparse.FloatTensor(edges[i], values[i], torch.Size([max_len, max_len])).to_dense())
+                # oneHot = torch.zeros((label[i].shape[0], label[i].shape[1], self.category))
+                # oneHot.scatter_(2, label[i].to_dense().long().unsqueeze(-1), 1)
+                # label[i] = oneHot
                 # print(inputs[i].shape)
 
             inputs = torch.stack(inputs, dim=0).squeeze()
@@ -96,10 +106,11 @@ class BucketDataLoader:
 
             return inputs, attens, label
 
-        return None
-
+        except IndexError:
+            np.random.shuffle(self.starts)
+            self.num = 0
+            raise StopIteration()
 
 # dataset = MyDataset(count=2515)
 # loader = BucketDataLoader(dataset, 8, True)
 # a, b, c = loader.__next__()
-

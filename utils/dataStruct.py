@@ -14,11 +14,16 @@ class DataStruct:
         self.text = [data['Text'].tolist()[0]]
 
 
-class MyDataLoader:
-    def __init__(self,path: str = "./train/", count: int = 10):
-        self.data = list(map(lambda line: DataStruct(line), dataPreLoader(path,count).data))
+class MyDataProcessor:
+    def __init__(self, path: str = "./train/", count: int = 10):
+        self.preLoader = dataPreLoader(path, count)
+        self.cateDict = self.preLoader.index2cate
+        print("mydataProcessor")
+        print(self.preLoader.index2cate)
+        self.data = list(map(lambda line: DataStruct(line), self.preLoader.data))
 
     def loadData(self):
         return self.data
 
-
+    def loadDict(self):
+        return self.cateDict

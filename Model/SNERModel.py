@@ -17,13 +17,13 @@ class SNERModel(nn.Module, ABC):
 
     def forward(self, x):
         x, _ = self.bilstm(x)
-        print("BILSTM:", x)
+        # print("BILSTM:", x)
         start = self.feedStart(x)
         end = self.feedEnd(x)
-        print("FEEDSTART:", start)
-        print("FEEDEND:", end)
+        # print("FEEDSTART:", start)
+        # print("FEEDEND:", end)
         score = self.biaffine(start, end)
-        print("BIAFFINE:", score)
+        # print("BIAFFINE:", score)
         return score
 
 #
