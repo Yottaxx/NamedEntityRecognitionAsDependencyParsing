@@ -60,10 +60,10 @@ def run(args):
         return epochLoss
 
     def trainTrainer(epoch):
+        evalLoss = 10
         for i in trange(epoch):
             model.train()
             epochLoss = 0.0
-            evalLoss = 10
             cycle = 0
             for passage, mask, label in trainLoader:
                 passage = passage.long()
@@ -83,7 +83,7 @@ def run(args):
             evalLoss = min(evalTrainer(), evalLoss)
 
             print(epochLoss, evalLoss)
-
+        nni.report_final_result(evalLoss)
     trainTrainer(epoch)
 
 
