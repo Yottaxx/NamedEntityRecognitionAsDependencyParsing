@@ -84,7 +84,7 @@ def run(args):
 
             print(epochLoss, evalLoss)
 
-        trainTrainer(epoch)
+    trainTrainer(epoch)
 
 
 # TODO(Yotta): to evaluation tasks
