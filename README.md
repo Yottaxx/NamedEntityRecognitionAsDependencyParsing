@@ -6,6 +6,8 @@
 ## Datasets/数据集
 [非结构化商业文本信息中隐私信息识别](https://www.datafountain.cn/competitions/472/datasets)
 
+## Model/模型
+[Named Entity Recognition as Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.577/)
 ## Pretrained/预处理
 * transformers hfl/chinese-xlnet-mid
 
@@ -24,4 +26,7 @@ Tree-structured Parzen Estimator
 #### Assessor/评估器
 Curve Fitting Assessor 
 
-##Member/成员
+## Member/成员
+
+
+
