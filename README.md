@@ -27,6 +27,9 @@ Tree-structured Parzen Estimator
 Curve Fitting Assessor 
 
 ## Member/成员
-中 关 村 路
+中
+关
+村
+路
 
 
