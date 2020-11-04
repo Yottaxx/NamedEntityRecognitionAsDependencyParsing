@@ -42,16 +42,19 @@ def trainTrainer(epoch):
         evalLoss = 10
         cycle = 0
         for passage, mask, label in trainLoader:
+            print("-------------Training--------")
             passage = passage.long()
             emb = dataset.model(passage, attention_mask=mask)[0]
-
+            print("-------------embing--------")
             out = model(emb)
+            print("-------------modeling--------")
             optimizer.zero_grad()
             loss = lossFunc(out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1),
                             label.reshape(label.shape[0] * label.shape[1] * label.shape[2]))
             # loss = -(c * torch.log(F.softmax(out, dim=-1))).sum()
             loss.backward()
             optimizer.step()
+            print("-------------lossing--------")
             print(loss.item())
             epochLoss += loss.item()
             cycle += 1

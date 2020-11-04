@@ -75,7 +75,6 @@ def run(args):
                                 label.reshape(label.shape[0] * label.shape[1] * label.shape[2]))
                 # loss = -(c * torch.log(F.softmax(out, dim=-1))).sum()
                 loss.backward()
-                optimizer.step()
                 print(loss.item())
                 epochLoss += loss.item()
                 cycle += 1
