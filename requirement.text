@@ -1,5 +1,5 @@
 torch>=1.6.0
-torchtext==0.8.0
+torchtext==0.7.0
 pandas
 numpy
 tqdm

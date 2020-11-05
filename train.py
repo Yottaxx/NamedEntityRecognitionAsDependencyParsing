@@ -7,13 +7,16 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 
-epoch = 8
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+epoch = 1
 batch_size = 8
 dataset = MyDataset(path="./utils/train/", count=2515)
 trainLoader = BucketDataLoader(dataset, batch_size, True,True)
 devLoader = BucketDataLoader(dataset, batch_size, True,False)
 
 model = SNERModel(d_in=768, d_hid=100, d_class=len(dataset.cateDict) + 1, n_layers=2)
+model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), weight_decay=5e-4)
 lossFunc = nn.CrossEntropyLoss()
 
@@ -23,8 +26,16 @@ def evalTrainer():
     cycle = 0
     model.eval()
     for passage, mask, label in devLoader:
+
+        passage.to(device)
+        mask.to(device)
+
         passage = passage.long()
         emb = dataset.model(passage, attention_mask=mask)[0]
+
+
+        label = label.to(device)
+        emb = emb.to(device)
 
         out = model(emb)
         loss = lossFunc(out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1),
@@ -43,8 +54,17 @@ def trainTrainer(epoch):
         cycle = 0
         for passage, mask, label in trainLoader:
             print("-------------Training--------")
+
+            # passage = passage.to(device)
+            # mask = mask.to(device)
+            # dataset.model.to(device)
+
             passage = passage.long()
             emb = dataset.model(passage, attention_mask=mask)[0]
+
+            label = label.to(device)
+            emb = emb.to(device)
+
             print("-------------embing--------")
             out = model(emb)
             print("-------------modeling--------")
