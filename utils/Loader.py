@@ -14,7 +14,9 @@ class dataPreLoader:
         labelList = []
         for i in trange(count):
             temp = pd.read_csv(path + "label/" + str(i) + ".csv")
-            temp['Text'] = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text']).loc[0]['Text']
+            sentence = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text'])['Text']
+            sentence = ' '.join(list(sentence))
+            temp['Text'] = sentence
             labelList.append(temp)
             # print(temp)
         return labelList
@@ -71,8 +73,11 @@ class dataPreLoader:
 
         data = self.load(path, count)
 
-        category = list(map(lambda line: process(line), data))
-        category = list(sorted(set(list(chain(*category)))))
+        #category = list(map(lambda line: process(line), data))
+        #category = list(sorted(set(list(chain(*category)))))
+        category = ['QQ', 'address', 'book', 'company', 'email',
+                    'game', 'government', 'mobile', 'movie',
+                    'name', 'organization', 'position', 'scene', 'vx']
 
         data = list(map(lambda line: filterCategory(line), data))
 
