@@ -15,8 +15,10 @@ class MyDataset(Dataset):
         self.processor = MyDataProcessor(path, count)
         self.data = self.processor.loadData()
         self.cateDict = self.processor.loadDict()
-        self.tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-xlnet-mid")
-        self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=768)
+        self.model_path = r'C:\Users\86435\Documents\work_pycharm\work_NER\chinese-xlnet-mid'
+        #self.model_path = r'/data/lingvo_data/transformers_model/chinese-xlnet-mid'
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.model = XLNetModel.from_pretrained(self.model_path, mem_len=768)
         self.len = len(self.data)
         self.max_len = max(list(map(lambda x: len(x.text[0]), self.data)))
 

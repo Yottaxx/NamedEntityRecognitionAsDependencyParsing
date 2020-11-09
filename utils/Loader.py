@@ -13,6 +13,9 @@ class dataPreLoader:
     def loadLabel(self, path: str = "./train/", count: int = 2515) -> list:
         labelList = []
         for i in trange(count):
+            # 跳过两个会报错的label文件
+            if i == 30 or i == 667:
+                continue
             temp = pd.read_csv(path + "label/" + str(i) + ".csv")
             sentence = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text'])['Text']
             sentence = ' '.join(list(sentence))
