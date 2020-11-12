@@ -1,8 +1,8 @@
 authorName: Yotta
 experimentName: NER
 trialConcurrency: 1
-maxExecDuration: 8h
-maxTrialNum: 50
+maxExecDuration: 48h
+maxTrialNum: 200
 #choice: local, remote, pai
 trainingServicePlatform: local
 searchSpacePath: search_space.json
@@ -18,3 +18,7 @@ tuner:
 trial:
   command: python3 trainParser.py
   codeDir: .
+  gpuNum: 1
+localConfig:
+  gpuIndices: '5'
+  useActiveGpu: true

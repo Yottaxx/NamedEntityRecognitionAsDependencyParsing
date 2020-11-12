@@ -12,6 +12,7 @@ class DataStruct:
         self.edgeRight = data['Pos_e'].tolist()
         self.values = data['Category'].tolist()
         self.text = [data['Text'].tolist()[0]]
+        #self.label_num = len(data)
 
 
 class MyDataProcessor:
