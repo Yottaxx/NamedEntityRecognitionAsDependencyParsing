@@ -51,10 +51,22 @@ def count_same_entities(label_items, pred_items):
     return count
 
 def clash_check(Rm):
-    score, cate_pred = Rm.max(-1)
+    #print(Rm.shape)
+    # get socre and pred l*l
+    score, cate_pred = Rm.max(dim=-1)
+    #cate_pred_ = Rm.argmax(dim=-1)
+    #print(cate_pred.sum().item(), cate_pred_.sum().item())
+
+    # # mask the max score of max cate in Rm
+    # max_mask = (Rm == score.unsqueeze(-1))
+    # Rm = torch.where(max_mask, torch.zeros_like(Rm), Rm)
+    #
+    # # recompute the max, means to select the 2ed max category
+    # score, cate_pred = Rm.max(-1)
+
     # mask category of non-entity
-    mask = (cate_pred==torch.tensor([0]).to(score.device))
-    score = torch.where(mask, torch.zeros_like(score), score)
+    zero_mask = (cate_pred==torch.tensor([0]).to(score.device))
+    score = torch.where(zero_mask, torch.zeros_like(score), score)
 
     if score.sum() > 0:
         print("Sum of categoriesID: ", cate_pred.sum().item(), "Sum of p: ", score.sum().item())
@@ -71,6 +83,20 @@ def clash_check(Rm):
     score = torch.where((score>=max_in_col.unsqueeze(0)), score, torch.zeros_like(score))
     cate_pred = torch.where((score>=max_in_col.unsqueeze(0)), cate_pred, torch.zeros_like(cate_pred))
     return score, cate_pred
+
+# before loss compute, filter some useful pos in out & label
+def get_useful_ones(out, label, attention_mask):
+    attention_mask = attention_mask.unsqueeze(1).expand(-1, attention_mask.shape[-1], -1)
+    attention_mask = torch.triu(attention_mask)
+    mask = attention_mask.reshape(-1)
+    tmp_out = out.reshape(-1, out.shape[-1])
+    tmp_label = label.reshape(-1)
+
+    indices = mask.nonzero(as_tuple=False).squeeze(-1).long()
+    tmp_out = tmp_out.index_select(0, indices)
+    tmp_label = tmp_label.index_select(0, indices)
+
+    return tmp_out, tmp_label
 
 if __name__ == '__main__':
     labels = torch.randn(3,5,5)
