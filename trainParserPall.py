@@ -76,7 +76,7 @@ def run(args):
         model, optimizer = load_dict(model, os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"]),
                                      optimizer)
 
-    # model = nn.DataParallel(model, device_ids=[0, 6])
+    model = nn.DataParallel(model, device_ids=[0, 6])
     lossFunc = nn.CrossEntropyLoss()
 
     def timeSince(start_time):
