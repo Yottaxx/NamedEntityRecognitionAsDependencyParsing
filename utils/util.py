@@ -1,10 +1,15 @@
 import torch
 
-def batch_computeF1(labels, preds):
+def batch_computeF1(labels, preds, masks):
     scoreF1 = 0
     for i in range(len(labels)):
         label = labels[i]
         pred = preds[i]
+        mask = masks[i]
+        # cutting the padding
+        true_len = int(mask.sum().item())
+        pred = pred[:true_len, :true_len]
+        label = label[:true_len, :true_len]
         scoreF1+=computeF1(label, pred)
     return scoreF1/len(labels)
 
@@ -84,14 +89,17 @@ def clash_check(Rm):
     cate_pred = torch.where((score>=max_in_col.unsqueeze(0)), cate_pred, torch.zeros_like(cate_pred))
     return score, cate_pred
 
+# loss compute problem
 # before loss compute, filter some useful pos in out & label
 def get_useful_ones(out, label, attention_mask):
+    # get mask, mask the padding and down triangle
     attention_mask = attention_mask.unsqueeze(1).expand(-1, attention_mask.shape[-1], -1)
     attention_mask = torch.triu(attention_mask)
+    # flatten
     mask = attention_mask.reshape(-1)
     tmp_out = out.reshape(-1, out.shape[-1])
     tmp_label = label.reshape(-1)
-
+    # index select, for gpu speed
     indices = mask.nonzero(as_tuple=False).squeeze(-1).long()
     tmp_out = tmp_out.index_select(0, indices)
     tmp_label = tmp_label.index_select(0, indices)
