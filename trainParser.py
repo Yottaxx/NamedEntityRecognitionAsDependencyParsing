@@ -5,8 +5,8 @@ import nni
 from tqdm import trange
 import time
 
-from Model.FModel import FModel
-from Model.SModel import SModel
+# from Model.FModel import FModel
+# from Model.SModel import SModel
 from Model.SNERModel import SNERModel
 from utils import MyDataset, BucketDataLoader
 import torch
@@ -18,7 +18,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 from utils.scoreF1 import batch_computeF1
 
-writer = SummaryWriter()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger = logging.getLogger('NER')
@@ -26,12 +25,12 @@ logger = logging.getLogger('NER')
 
 def get_paras():
     parser = argparse.ArgumentParser(description="hyperparameters")
-    parser.add_argument('--lr', '-l', type=float, help="lr must", default=0.0001)
-    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=4)
+    parser.add_argument('--lr', '-l', type=float, help="lr must", default=0.001)
+    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=32)
     parser.add_argument('--epoch', '-e', type=int, help="epoch must", default=16)
     parser.add_argument('--dropout', '-d', type=float, help="dropout must", default=0.5)
     parser.add_argument('--d_in', '-i', type=int, help="in_size must", default=768)
-    parser.add_argument('--d_hid', '-g', type=int, help="g_size must", default=1024*3)
+    parser.add_argument('--d_hid', '-g', type=int, help="g_size must", default=300)
     parser.add_argument('--n_layers', '-k', type=int, help="kernel must", default=2)
     parser.add_argument('--redo', '-r', type=int, help="reload model", default=0)
 
@@ -61,6 +60,7 @@ def save_dict(model, path, optimizer, epoch, loss):
 
 
 def run(args):
+    writer = SummaryWriter("runs"+str(args["batch_size"]))
     epoch = args['epoch']
     batch_size = args['batch_size']
 
@@ -68,15 +68,15 @@ def run(args):
     trainLoader = BucketDataLoader(dataset, batch_size, True, True)
     devLoader = BucketDataLoader(dataset, batch_size, True, False)
 
-    model = FModel(d_in=args['d_in'], d_hid=args['d_hid'],
-                   d_class=len(dataset.cateDict) + 1, n_layers=args['n_layers'], dropout=args['dropout']).to(device)
+    model = SNERModel(d_in=args['d_in'], d_hid=args['d_hid'],
+                   d_class=len(dataset.cateDict) + 1, n_layers=args['n_layers'], dropout=args['dropout']).to("cuda:1")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], betas=(0.9, 0.999), weight_decay=5e-4)
     if args['redo'] == 1:
         model, optimizer = load_dict(model, os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"]),
                                      optimizer)
-
-    # model = nn.DataParallel(model, device_ids=[0, 6])
+    xlnet = dataset.model.to("cuda:0")
+    model = nn.DataParallel(model)
     lossFunc = nn.CrossEntropyLoss()
 
     def timeSince(start_time):
@@ -96,11 +96,14 @@ def run(args):
             mask = mask.to(device)
             label = label.to(device)
 
-            if (len(passage.shape) < 2):
+            if len(passage.shape) < 2:
                 passage = passage.unsqueeze(0)
                 mask = mask.unsqueeze(0)
 
-            out = model(passage, mask)
+            with torch.no_grad():
+                emb = xlnet(passage, mask)[0]
+
+            out = model(emb)
             loss = lossFunc(out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1),
                             label.reshape(label.shape[0] * label.shape[1] * label.shape[2]))
             # loss = -(c * torch.log(F.softmax(out, dim=-1))).sum()
@@ -136,8 +139,11 @@ def run(args):
                     passage = passage.unsqueeze(0)
                     mask = mask.unsqueeze(0)
 
+                with torch.no_grad():
+                    emb = xlnet(passage, mask)[0]
                 # print("-------------embing--------")
-                out = model(passage, mask)
+
+                out = model(emb)
                 # print("-------------modeling--------")
                 optimizer.zero_grad()
                 loss = lossFunc(out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1),

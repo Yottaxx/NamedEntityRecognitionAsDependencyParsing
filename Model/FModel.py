@@ -12,7 +12,10 @@ class FModel(nn.Module, ABC):
 
     def __init__(self, d_in, d_hid, d_class, n_layers, bi=True, dropout=0.3):
         super().__init__()
-        self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)
+
+        with torch.no_grad():
+            self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)
+
         self.bilstm = nn.LSTM(d_in, d_hid, num_layers=n_layers, batch_first=True, dropout=dropout,
                               bidirectional=bi)
         self.feedStart = feedforwardLayer(d_hid * 2, d_hid * 8, dropout=0.2)

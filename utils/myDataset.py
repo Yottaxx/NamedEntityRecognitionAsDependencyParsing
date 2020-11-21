@@ -16,7 +16,7 @@ class MyDataset(Dataset):
         self.data = self.processor.loadData()
         self.cateDict = self.processor.loadDict()
         self.tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-xlnet-mid")
-        # self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=768)
+        # self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)
         self.len = len(self.data)
         self.max_len = max(list(map(lambda x: len(x.text[0]), self.data)))
 
