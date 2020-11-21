@@ -16,10 +16,12 @@ def batch_computeF1(labels, preds, masks):
 def computeF1(label, pred):
     # 将label和pred读入，计算F1score返回
     label_items = get_entities(label, label=True)
-    pred_items = get_entities(pred)
+    # use new func
+    pred_items = Rm2entities(pred)
+    # pred_items = get_entities(pred)
     label_num = len(label_items)
     pred_num = len(pred_items)
-    #print("label_num:", label_num, "pred_num", pred_num)
+    print("label_num:", label_num, "pred_num", pred_num)
 
     same_num = count_same_entities(label_items, pred_items)
     if same_num == 0:
@@ -28,6 +30,7 @@ def computeF1(label, pred):
     precision = float(same_num)/float(label_num)
     recall = float(same_num)/float(pred_num)
     score = 2*precision*recall/(precision+recall)
+    # print(score)
     return score
 
 def get_entities(input_tensor, label=False):
@@ -89,6 +92,47 @@ def clash_check(Rm):
     cate_pred = torch.where((score>=max_in_col.unsqueeze(0)), cate_pred, torch.zeros_like(cate_pred))
     return score, cate_pred
 
+# new clash check func, from Rm matrix to entities set
+def Rm2entities(Rm, is_flat_ner=True):
+    # get socre and pred l*l
+    score, cate_pred = Rm.max(dim=-1)
+
+    # filter mask
+    # mask category of non-entity
+    zero_mask = (cate_pred == torch.tensor([0]).float().to(score.device))
+    score = torch.where(zero_mask, torch.zeros_like(score), score)
+    # pos_b <= pos_e check
+    score = torch.triu(score) # l*l
+    cate_pred = torch.triu(cate_pred) # l*l
+
+    # get all entity list
+    all_entity = []
+    score_shape = score.shape
+    score = score.reshape(-1)
+    cate_pred = cate_pred.reshape(-1)
+    entity_indices = (score != 0).nonzero(as_tuple = False).squeeze(-1)
+    for i in entity_indices:
+        i = int(i)
+        score_i = float(score[i].item())
+        cate_pred_i = int(cate_pred[i].item())
+        pos_s = i//score_shape[0]
+        pos_e = i%score_shape[0]
+        all_entity.append((pos_s, pos_e, cate_pred_i, score_i))
+    # sort by score
+    all_entity = sorted(all_entity, key=lambda x:x[-1])
+    res_entity = []
+    for ns,ne,t,_ in all_entity:
+        for ts,te,_ in res_entity:
+            if ns < ts <= ne < te or ts < ns <= te < ne:
+                # for both nested and flat ner no clash is allowed
+                break
+            if is_flat_ner and (ns <= ts <= te <= ne or ts <= ns <= ne <= te):
+                # for flat ner nested mentions are not allowed
+                break
+        else:
+            res_entity.append((ns, ne, t))
+    return set(res_entity)
+
 # loss compute problem
 # before loss compute, filter some useful pos in out & label
 def get_useful_ones(out, label, attention_mask):
@@ -109,4 +153,5 @@ def get_useful_ones(out, label, attention_mask):
 if __name__ == '__main__':
     labels = torch.randn(3,5,5)
     pred = torch.randn(3,5,5,3)
-    print(batch_computeF1(labels, pred))
+    mask = torch.ones(3, 5)
+    print(batch_computeF1(labels, pred, masks))
