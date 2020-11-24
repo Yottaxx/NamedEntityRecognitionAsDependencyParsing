@@ -12,6 +12,7 @@ class FModel(nn.Module, ABC):
 
     def __init__(self, d_in, d_hid, d_class, n_layers, bi=True, dropout=0.3):
         super().__init__()
+        # self.model_path = r'C:\Users\86435\Documents\work_pycharm\work_NER\chinese-xlnet-mid'
         self.model_path = r'/data/lingvo_data/transformers_model/chinese-xlnet-mid'
         self.model = XLNetModel.from_pretrained(self.model_path, mem_len=1024)
         # self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)

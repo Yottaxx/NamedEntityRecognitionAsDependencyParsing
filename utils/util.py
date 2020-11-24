@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 
 def batch_computeF1(labels, preds, masks):
     scoreF1 = 0
@@ -21,7 +22,7 @@ def computeF1(label, pred):
     # pred_items = get_entities(pred)
     label_num = len(label_items)
     pred_num = len(pred_items)
-    print("label_num:", label_num, "pred_num", pred_num)
+    # print("label_num:", label_num, "pred_num", pred_num)
 
     same_num = count_same_entities(label_items, pred_items)
     if same_num == 0:
@@ -133,6 +134,14 @@ def Rm2entities(Rm, is_flat_ner=True):
             res_entity.append((ns, ne, t))
     return set(res_entity)
 
+def entities2df(entities):
+    df = pd.DataFrame.from_records(entities, columns=['Category', 'Pos_s', 'Pos_e', 'Privacy'])
+    ID_list = list(range(len(df)))
+    for i in ID_list:
+        i = str(i)
+    df.insert(0, "ID", ID_list)
+    return df
+
 # loss compute problem
 # before loss compute, filter some useful pos in out & label
 def get_useful_ones(out, label, attention_mask):
@@ -154,4 +163,4 @@ if __name__ == '__main__':
     labels = torch.randn(3,5,5)
     pred = torch.randn(3,5,5,3)
     mask = torch.ones(3, 5)
-    print(batch_computeF1(labels, pred, masks))
+    #print(batch_computeF1(labels, pred, mask))

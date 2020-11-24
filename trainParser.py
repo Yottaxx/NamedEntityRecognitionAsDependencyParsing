@@ -3,7 +3,7 @@
 import argparse
 import os
 
-import nni
+#import nni
 from tqdm import trange
 import time
 
@@ -25,11 +25,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger = logging.getLogger('NER')
 
+path_prefix = r'/home/mgliu/work_NER/NewNER/checkpoint'
+
 
 def get_paras():
     parser = argparse.ArgumentParser(description="hyperparameters")
     parser.add_argument('--lr', '-l', type=float, help="lr must", default=0.001)
-    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=4)
+    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=16)
     parser.add_argument('--epoch', '-e', type=int, help="epoch must", default=200)
     parser.add_argument('--dropout', '-d', type=float, help="dropout must", default=0.5)
     parser.add_argument('--d_in', '-i', type=int, help="in_size must", default=768)
@@ -58,8 +60,9 @@ def save_dict(model, path, optimizer, epoch, loss):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': loss,
-        }, os.path.join(path)  # parser版本可根据参数情况来设置ckp文件名
+        }, os.path.join(path_prefix, path)  # parser版本可根据参数情况来设置ckp文件名
     )
+    print("++++Checkpoint Saved at :", os.path.join(path_prefix, path))
 
 
 def run(args):
@@ -72,13 +75,16 @@ def run(args):
 
     model = FModel(d_in=args['d_in'], d_hid=args['d_hid'],
                    d_class=len(dataset.cateDict) + 1, n_layers=args['n_layers'], dropout=args['dropout']).to(device)
+    for name, param in model.named_parameters():
+        if "model" in name:
+            param.requires_grad = False
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], betas=(0.9, 0.999), weight_decay=5e-4)
     if args['redo'] == 1:
         model, optimizer = load_dict(model, os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"]),
                                      optimizer)
 
-    model = nn.DataParallel(model)
+    #model = nn.DataParallel(model)
     lossFunc = nn.CrossEntropyLoss(reduction='sum')
 
     def timeSince(start_time):
@@ -160,8 +166,12 @@ def run(args):
             epochLoss = epochLoss / cycle
             evalTrainerLoss, evalTrainerF1 = evalTrainer()
 
+            #if True:
             if evalTrainerF1 > evalFscore:
-                save_dict(model, os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"], optimizer), optimizer, i, evalLoss)
+                save_dict(model,
+                          os.path.join(str(args["n_layers"]) +'l-'+ str(args["d_hid"]) +'h-'+ str(args["batch_size"])+'b-'
+                                       +"200e-new_bfl_true.pt"),
+                          optimizer, i, evalLoss)
 
             evalLoss = min(evalTrainerLoss, evalLoss)
             evalFscore = max(evalFscore, evalTrainerF1)
