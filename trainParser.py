@@ -97,6 +97,8 @@ def run(args):
         epochLoss = 0.0
         cycle = 0
         Fscore = 0.0
+        precision = 0.0
+        recall = 0.0
         model.eval()
         for passage, mask, label in devLoader:
             passage = passage.long()
@@ -116,16 +118,25 @@ def run(args):
             # loss = -(c * torch.log(F.softmax(out, dim=-1))).sum()
             epochLoss += loss.item()
             cycle += 1
-            Fscore += batch_computeF1(label, out, mask)
+            Fscore_tmp, precision_tmp, recall_tmp = batch_computeF1(label, out, mask)
+            Fscore+=Fscore_tmp
+            precision+=precision_tmp
+            recall+=recall_tmp
 
         epochLoss = epochLoss / cycle
         Fscore = Fscore / cycle
+        precision = precision / cycle
+        recall = recall / cycle
         # nni.report_intermediate_result(epochLoss)
-        return epochLoss, Fscore
+        return epochLoss, Fscore, precision, recall
 
     def trainTrainer(epoch):
         evalLoss = 9999
         evalFscore = 0.0
+        evalP = 0.0
+        evalR = 0.0
+        precision = 0.0
+        recall = 0.0
         for i in trange(epoch):
             print()
             start_time = time.time()
@@ -161,26 +172,41 @@ def run(args):
                 # print(loss.item())
                 epochLoss += loss.item()
                 cycle += 1
-                Fscore += batch_computeF1(label, out, mask)
+                Fscore_tmp, precision_tmp, recall_tmp = batch_computeF1(label, out, mask)
+                Fscore += Fscore_tmp
+                precision += precision_tmp
+                recall += recall_tmp
 
             epochLoss = epochLoss / cycle
-            evalTrainerLoss, evalTrainerF1 = evalTrainer()
+            precision = precision / cycle
+            recall = recall / cycle
+            evalTrainerLoss, evalTrainerF1, evalTrainerP, evalTrainerR = evalTrainer()
 
-            #if True:
             if evalTrainerF1 > evalFscore:
                 save_dict(model,
                           os.path.join(str(args["n_layers"]) +'l-'+ str(args["d_hid"]) +'h-'+ str(args["batch_size"])+'b-'
-                                       +"200e-new_bfl_true.pt"),
+                                       +"200e-transformer.pt"),
+                          optimizer, i, evalLoss)
+            if evalTrainerLoss < evalLoss:
+                save_dict(model,
+                          os.path.join(str(args["n_layers"]) +'l-'+ str(args["d_hid"]) +'h-'+ str(args["batch_size"])+'b-'
+                                       +"200e-minloss_transformer.pt"),
                           optimizer, i, evalLoss)
 
             evalLoss = min(evalTrainerLoss, evalLoss)
             evalFscore = max(evalFscore, evalTrainerF1)
+            evalP = max(evalP, evalTrainerP)
+            evalR = max(evalR, evalTrainerR)
             Fscore = Fscore / cycle
 
             writer.add_scalar('Loss/train', epochLoss, i)
             writer.add_scalar('Loss/test', evalTrainerLoss, i)
             writer.add_scalar('Accuracy/train', Fscore, i)
             writer.add_scalar('Accuracy/test', evalTrainerF1, i)
+            writer.add_scalar("Precision/train", precision, i)
+            writer.add_scalar("Precision/test", evalTrainerP, i)
+            writer.add_scalar("Recall/train", recall, i)
+            writer.add_scalar("Recall/test", evalTrainerR, i)
 
             print("====Epoch: {} epoch_F: {} dev_F: {}".format(i + 1, Fscore, evalTrainerF1))
             print("    Time used: {}".format(timeSince(start_time)))

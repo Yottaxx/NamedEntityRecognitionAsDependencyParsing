@@ -2,7 +2,9 @@ import torch
 import pandas as pd
 
 def batch_computeF1(labels, preds, masks):
-    scoreF1 = 0
+    scoreF1 = 0.0
+    p = 0.0
+    r = 0.0
     for i in range(len(labels)):
         label = labels[i]
         pred = preds[i]
@@ -11,8 +13,11 @@ def batch_computeF1(labels, preds, masks):
         true_len = int(mask.sum().item())
         pred = pred[:true_len, :true_len]
         label = label[:true_len, :true_len]
-        scoreF1+=computeF1(label, pred)
-    return scoreF1/len(labels)
+        (score, precision, recall) = computeF1(label, pred)
+        scoreF1+=score
+        p += precision
+        r += recall
+    return scoreF1/len(labels), p/len(labels), r/len(labels)
 
 def computeF1(label, pred):
     # 将label和pred读入，计算F1score返回
@@ -26,13 +31,13 @@ def computeF1(label, pred):
 
     same_num = count_same_entities(label_items, pred_items)
     if same_num == 0:
-        return 0
+        return 0.0,0.0,0.0
 
     precision = float(same_num)/float(label_num)
     recall = float(same_num)/float(pred_num)
     score = 2*precision*recall/(precision+recall)
     # print(score)
-    return score
+    return (score, precision, recall)
 
 def get_entities(input_tensor, label=False):
     # Rm 为l*l*c的tensor，表征着每一个起始i终止j的片段属于各个实体的概率

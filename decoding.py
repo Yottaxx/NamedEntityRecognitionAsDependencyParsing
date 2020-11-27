@@ -35,7 +35,7 @@ def load_model(d_h=150, n_l=2, dropout=0.5, path=None):
 def run():
     file_path = r"./utils/test/data/"
     label_path = r'./utils/test/label/'
-    model_path = r'./checkpoint/2l-150h-16b-200e.pt'
+    model_path = r'./checkpoint/2l-150h-16b-200e-new_bfl-minloss.pt'
     category_list = ['QQ', 'address', 'book', 'company', 'email',
                 'game', 'government', 'mobile', 'movie',
                 'name', 'organization', 'position', 'scene', 'vx']
@@ -53,7 +53,7 @@ def run():
         with torch.no_grad():
             out = model(input_ids, mask)
         out = out[0]
-        entities = list(Rm2entities(out))
+        entities = list(Rm2entities(out, is_flat_ner=False))
         new_entities = []
         for i, entity in enumerate(entities):
             pos_s, pos_e, category = entity
@@ -71,7 +71,7 @@ def run():
         id += 1
         df.to_csv(path, index=False)
 
-def get_submission(label_path = '', count = 3956):
+def get_submission(label_path = r'./utils/test/label/', predict_path = None, count = 3956):
     path = r'./utils/test/label/'
     dfs = []
     for i in range(count):
@@ -82,7 +82,10 @@ def get_submission(label_path = '', count = 3956):
         dfs.append(df)
         #break
     res = pd.concat(dfs)
-    res.to_csv(path+"predict_str.csv", index=False)
+    if predict_path is None:
+        predict_path = label_path+'predict.csv'
+    res.to_csv(predict_path, index=False)
+    print("Saved predict: ", predict_path)
 
 def line2strs(line):
     #print(type(line))
@@ -93,5 +96,7 @@ def line2strs(line):
     return line
 
 if __name__ == '__main__':
+    label_path = r'./utils/test/label/'
+    predict_path = label_path+'predict_minloss.csv'
     run()
-    get_submission()
+    get_submission(label_path=label_path, predict_path=predict_path)
