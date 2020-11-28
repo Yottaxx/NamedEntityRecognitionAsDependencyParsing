@@ -4,7 +4,7 @@ from typing import Optional
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import AutoTokenizer, XLNetModel
+from transformers import AutoTokenizer, XLNetModel, BertTokenizer
 import torch
 import numpy as np
 from utils.dataStruct import MyDataProcessor
@@ -17,7 +17,7 @@ class MyDataset(Dataset):
         self.cateDict = self.processor.loadDict()
         #self.model_path = r'C:\Users\86435\Documents\work_pycharm\work_NER\chinese-xlnet-mid'
         self.model_path = r'/data/lingvo_data/transformers_model/chinese-xlnet-mid'
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.tokenizer = BertTokenizer.from_pretrained("clue/roberta_chinese_clue_large")
         #self.model = XLNetModel.from_pretrained(self.model_path, mem_len=768)
         self.len = len(self.data)
         self.max_len = max(list(map(lambda x: len(x.text[0]), self.data)))

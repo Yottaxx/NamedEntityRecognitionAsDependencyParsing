@@ -1,6 +1,6 @@
 from abc import ABC
 
-from transformers import XLNetModel
+from transformers import XLNetModel, BertModel
 
 from Layers import feedforwardLayer, biaffineLayer
 import torch.nn as nn
@@ -13,14 +13,14 @@ class FModel(nn.Module, ABC):
     def __init__(self, d_in, d_hid, d_class, n_layers, bi=True, dropout=0.3):
         super().__init__()
         # self.model_path = r'C:\Users\86435\Documents\work_pycharm\work_NER\chinese-xlnet-mid'
-        self.model_path = r'/data/lingvo_data/transformers_model/chinese-xlnet-mid'
-        self.model = XLNetModel.from_pretrained(self.model_path, mem_len=1024)
+        # self.model_path = r'/data/lingvo_data/transformers_model/chinese-xlnet-mid'
+        self.model = BertModel.from_pretrained("clue/roberta_chinese_clue_large")
         # self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)
-        self.bilstm = nn.LSTM(d_in, d_hid, num_layers=n_layers, batch_first=True, dropout=dropout,
+        self.bilstm = nn.LSTM(d_in, 200, num_layers=3, batch_first=True, dropout=0.4,
                               bidirectional=bi)
-        self.feedStart = feedforwardLayer(d_hid * 2, d_hid * 8, dropout=0.2)
-        self.feedEnd = feedforwardLayer(d_hid * 2, d_hid * 8, dropout=0.2)
-        self.biaffine = biaffineLayer(d_hid * 2, d_hid * 2, d_class, dropout=dropout)
+        self.feedStart = feedforwardLayer(400, 150, dropout=0.2)
+        self.feedEnd = feedforwardLayer(400, 150, dropout=0.2)
+        self.biaffine = biaffineLayer(400, 400, d_class, dropout=dropout)
 
     def forward(self, x, atten):
         x = self.model(x, atten)[0]
