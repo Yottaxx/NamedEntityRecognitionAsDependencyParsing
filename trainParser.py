@@ -25,7 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger = logging.getLogger('NER')
 
-path_prefix = r'/home/mgliu/work_NER/NewNER/checkpoint'
+path_prefix = r'/data/zx/me/NerNER/checkpoint'
 
 
 def get_paras():
@@ -34,7 +34,7 @@ def get_paras():
     parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=16)
     parser.add_argument('--epoch', '-e', type=int, help="epoch must", default=200)
     parser.add_argument('--dropout', '-d', type=float, help="dropout must", default=0.5)
-    parser.add_argument('--d_in', '-i', type=int, help="in_size must", default=768)
+    parser.add_argument('--d_in', '-i', type=int, help="in_size must", default=1024)
     parser.add_argument('--d_hid', '-g', type=int, help="g_size must", default=150)
     parser.add_argument('--n_layers', '-k', type=int, help="kernel must", default=2)
     parser.add_argument('--redo', '-r', type=int, help="reload model", default=0)
@@ -156,7 +156,7 @@ def run(args):
                 if (len(passage.shape) < 2):
                     passage = passage.unsqueeze(0)
                     mask = mask.unsqueeze(0)
-
+                print(passage.shape,mask.shape)
                 # print("-------------embing--------")
                 out = model(passage, mask)
                 # print("-------------modeling--------")

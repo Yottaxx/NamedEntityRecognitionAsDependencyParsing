@@ -18,8 +18,9 @@ class dataPreLoader:
                 continue
             temp = pd.read_csv(path + "label/" + str(i) + ".csv")
             sentence = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text'])['Text']
-            sentence = ' '.join(list(sentence))
-            temp['Text'] = sentence
+            sentence = ''.join(list(sentence))
+            temp['Text'] = sentence[:min(len(sentence), 500)]
+            temp = temp[temp["Pos_b"] < 500][temp["Pos_e"] < 500]
             labelList.append(temp)
             # print(temp)
         return labelList
@@ -76,8 +77,8 @@ class dataPreLoader:
 
         data = self.load(path, count)
 
-        #category = list(map(lambda line: process(line), data))
-        #category = list(sorted(set(list(chain(*category)))))
+        # category = list(map(lambda line: process(line), data))
+        # category = list(sorted(set(list(chain(*category)))))
         category = ['QQ', 'address', 'book', 'company', 'email',
                     'game', 'government', 'mobile', 'movie',
                     'name', 'organization', 'position', 'scene', 'vx']
