@@ -14,6 +14,7 @@ from utils import MyDataset, BucketDataLoader
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
+from torch.optim import Adam
 from transformers import AutoTokenizer, XLNetModel
 import logging
 from torch.utils.tensorboard import SummaryWriter
@@ -25,15 +26,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger = logging.getLogger('NER')
 
-path_prefix = r'/data/zx/me/NerNER/checkpoint'
+path_prefix = r'/home/mgliu/work_NER/NewNER/checkpoint'
 
 
 def get_paras():
     parser = argparse.ArgumentParser(description="hyperparameters")
     parser.add_argument('--lr', '-l', type=float, help="lr must", default=0.001)
-    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=16)
+    parser.add_argument('--batch_size', '-b', type=int, help="batch_size must", default=4)
     parser.add_argument('--epoch', '-e', type=int, help="epoch must", default=200)
-    parser.add_argument('--dropout', '-d', type=float, help="dropout must", default=0.5)
+    parser.add_argument('--dropout', '-d', type=float, help="dropout must", default=0.3)
     parser.add_argument('--d_in', '-i', type=int, help="in_size must", default=1024)
     parser.add_argument('--d_hid', '-g', type=int, help="g_size must", default=150)
     parser.add_argument('--n_layers', '-k', type=int, help="kernel must", default=2)
@@ -43,13 +44,13 @@ def get_paras():
     return args
 
 
-def load_dict(model, path, optimizer):
+def load_dict(path, model, optimizer):
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     epoch = checkpoint['epoch']
     loss = checkpoint['loss']
-    print("load: epoch ", epoch + " loss " + loss)
+    print("load: epoch ", str(epoch) + " loss " + str(loss))
     return model, optimizer
 
 
@@ -77,15 +78,26 @@ def run(args):
                    d_class=len(dataset.cateDict) + 1, n_layers=args['n_layers'], dropout=args['dropout']).to(device)
     for name, param in model.named_parameters():
         if "model" in name:
-            param.requires_grad = False
+            param.requires_grad = True
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], betas=(0.9, 0.999), weight_decay=5e-4)
-    if args['redo'] == 1:
-        model, optimizer = load_dict(model, os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"]),
-                                     optimizer)
+    new_layer = ["model"]
 
-    #model = nn.DataParallel(model)
+    optimizer_grouped_parameters = [
+        {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in new_layer)], "lr": 2e-5},
+        {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in new_layer)], }
+    ]
+
+    optimizer = Adam(optimizer_grouped_parameters, lr=1e-4, weight_decay=5e-4)
     lossFunc = nn.CrossEntropyLoss(reduction='sum')
+
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'], betas=(0.9, 0.999), weight_decay=5e-4)
+
+    if args['redo'] == 1:
+        model, optimizer = load_dict(os.path.join(args["n_layers"] + args["d_hid"] + args["batch_size"]), model,
+                                     optimizer)
+    #model, optimizer = load_dict('./checkpoint/2l-150h-64b-200e-roberta.pt', model, optimizer)
+    #model = nn.DataParallel(model)
+
 
     def timeSince(start_time):
         sec = time.time() - start_time
@@ -138,7 +150,7 @@ def run(args):
         precision = 0.0
         recall = 0.0
         for i in trange(epoch):
-            print()
+            # print()
             start_time = time.time()
             model.train()
             epochLoss = 0.0
@@ -156,7 +168,7 @@ def run(args):
                 if (len(passage.shape) < 2):
                     passage = passage.unsqueeze(0)
                     mask = mask.unsqueeze(0)
-                print(passage.shape,mask.shape)
+                # print(passage.shape,mask.shape)
                 # print("-------------embing--------")
                 out = model(passage, mask)
                 # print("-------------modeling--------")
@@ -185,12 +197,13 @@ def run(args):
             if evalTrainerF1 > evalFscore:
                 save_dict(model,
                           os.path.join(str(args["n_layers"]) +'l-'+ str(args["d_hid"]) +'h-'+ str(args["batch_size"])+'b-'
-                                       +"200e-transformer.pt"),
+                                       +"200e-roberta-finetune.pt"),
                           optimizer, i, evalLoss)
+
             if evalTrainerLoss < evalLoss:
                 save_dict(model,
                           os.path.join(str(args["n_layers"]) +'l-'+ str(args["d_hid"]) +'h-'+ str(args["batch_size"])+'b-'
-                                       +"200e-minloss_transformer.pt"),
+                                       +"200e-minloss-roberta-finetune.pt"),
                           optimizer, i, evalLoss)
 
             evalLoss = min(evalTrainerLoss, evalLoss)

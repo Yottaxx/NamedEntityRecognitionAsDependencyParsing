@@ -3,7 +3,7 @@ from typing import Optional
 
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
-from transformers import AutoTokenizer, XLNetModel
+from transformers import AutoTokenizer, XLNetModel,BertTokenizer
 import torch
 import numpy as np
 from utils.dataStruct import MyDataProcessor
@@ -15,8 +15,8 @@ class TestDataset(Dataset):
         self.processor = dataPreLoader(path, count)
         self.data = self.processor.data
         #self.model_path = r'C:\Users\86435\Documents\work_pycharm\work_NER\chinese-xlnet-mid'
-        self.model_path = r'/data/mgliu/transformers_model/chinese-xlnet-mid'
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.model_path = r'/data/mgliu/transformers_model/roberta_chinese_clue_large'
+        self.tokenizer = BertTokenizer.from_pretrained("clue/roberta_chinese_clue_large")
         # self.model = XLNetModel.from_pretrained("hfl/chinese-xlnet-mid", mem_len=1024)
         self.len = len(self.data)
         #self.max_len = max(list(map(lambda x: len(x.text[0]), self.data)))
@@ -24,6 +24,9 @@ class TestDataset(Dataset):
     def __getitem__(self, index):
 
         text = self.data[index]
+        if len(text)>510:
+            print(len(text), "Cut text into 512 words.")
+            text = text[:510]
         raw_text = text
         # label = torch.sparse.FloatTensor(edge, value, torch.Size([len(text)+2, len(text)+2]))
         text = [token for token in text]
