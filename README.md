@@ -8,8 +8,7 @@
 
 ## Model/模型
 [Named Entity Recognition as Dependency Parsing](https://www.aclweb.org/anthology/2020.acl-main.577/)
-## Pretrained/预处理
-* transformers hfl/chinese-xlnet-mid
+
 
 ## Environment/环境
 * torch>=1.6.0
