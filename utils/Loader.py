@@ -13,8 +13,14 @@ class dataPreLoader:
     def loadLabel(self, path: str = "./train/", count: int = 2515) -> list:
         labelList = []
         for i in trange(count):
+            # 跳过两个会报错的label文件
+            if i == 30 or i == 667:
+                continue
             temp = pd.read_csv(path + "label/" + str(i) + ".csv")
-            temp['Text'] = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text']).loc[0]['Text']
+            sentence = pd.read_csv(path + "data/" + str(i) + ".txt", names=['Text'])['Text']
+            sentence = ''.join(list(sentence))
+            temp['Text'] = sentence[:min(len(sentence), 500)]
+            temp = temp[temp["Pos_b"] < 500][temp["Pos_e"] < 500]
             labelList.append(temp)
             # print(temp)
         return labelList
@@ -71,8 +77,11 @@ class dataPreLoader:
 
         data = self.load(path, count)
 
-        category = list(map(lambda line: process(line), data))
-        category = list(sorted(set(list(chain(*category)))))
+        # category = list(map(lambda line: process(line), data))
+        # category = list(sorted(set(list(chain(*category)))))
+        category = ['QQ', 'address', 'book', 'company', 'email',
+                    'game', 'government', 'mobile', 'movie',
+                    'name', 'organization', 'position', 'scene', 'vx']
 
         data = list(map(lambda line: filterCategory(line), data))
 
